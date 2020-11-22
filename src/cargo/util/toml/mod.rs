@@ -1709,8 +1709,7 @@ impl DetailedTomlDependency {
                 // always end up hashing to the same value no matter where it's
                 // built from.
                 if cx.source_id.is_path() {
-                    let path = cx.root.join(path);
-                    let path = util::normalize_path(&path);
+                    let path = util::normalize_joined(cx.root, Path::new(path))?;
                     SourceId::for_path(&path)?
                 } else {
                     cx.source_id

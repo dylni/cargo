@@ -7,6 +7,7 @@ use std::iter;
 use std::path::{Component, Path, PathBuf};
 
 use filetime::FileTime;
+use normpath::BasePath;
 use tempfile::Builder as TempFileBuilder;
 
 use crate::util::errors::{CargoResult, CargoResultExt};
@@ -83,6 +84,11 @@ pub fn normalize_path(path: &Path) -> PathBuf {
         }
     }
     ret
+}
+
+pub fn normalize_joined(base: &Path, path: &Path) -> CargoResult<PathBuf> {
+    let base = BasePath::new(base).chain_err(|| "failed to read the current directory")?;
+    Ok(normalize_path(base.join(path).as_path()))
 }
 
 pub fn resolve_executable(exec: &Path) -> CargoResult<PathBuf> {
