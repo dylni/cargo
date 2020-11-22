@@ -7,7 +7,7 @@ use std::iter;
 use std::path::{Component, Path, PathBuf};
 
 use filetime::FileTime;
-use normpath::BasePath;
+use normpath::{BasePath, BasePathBuf, PathExt};
 use tempfile::Builder as TempFileBuilder;
 
 use crate::util::errors::{CargoResult, CargoResultExt};
@@ -59,7 +59,7 @@ pub fn dylib_path() -> Vec<PathBuf> {
     }
 }
 
-pub fn normalize_path(path: &Path) -> PathBuf {
+pub fn normalize_path_legacy(path: &Path) -> PathBuf {
     let mut components = path.components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
         components.next();
@@ -86,9 +86,18 @@ pub fn normalize_path(path: &Path) -> PathBuf {
     ret
 }
 
+pub fn normalize_path(path: &Path) -> CargoResult<PathBuf> {
+    return path
+        .normalize()
+        // Require the path to exist, which would already be required on Unix.
+        .and_then(|p| p.metadata().map(|_| p))
+        .chain_err(|| format!("failed to normalize `{}`", path.display()))
+        .map(BasePathBuf::into_path_buf);
+}
+
 pub fn normalize_joined(base: &Path, path: &Path) -> CargoResult<PathBuf> {
     let base = BasePath::new(base).chain_err(|| "failed to read the current directory")?;
-    Ok(normalize_path(base.join(path).as_path()))
+    normalize_path(base.join(path).as_path())
 }
 
 pub fn resolve_executable(exec: &Path) -> CargoResult<PathBuf> {

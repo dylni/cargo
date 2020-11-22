@@ -16,7 +16,7 @@ pub use self::into_url_with_base::IntoUrlWithBase;
 pub use self::lev_distance::{closest, closest_msg, lev_distance};
 pub use self::lockserver::{LockServer, LockServerClient, LockServerStarted};
 pub use self::paths::{bytes2path, dylib_path, join_paths, path2bytes};
-pub use self::paths::{dylib_path_envvar, normalize_joined, normalize_path};
+pub use self::paths::{dylib_path_envvar, normalize_joined, normalize_path_legacy};
 pub use self::process_builder::{process, ProcessBuilder};
 pub use self::progress::{Progress, ProgressStyle};
 pub use self::queue::Queue;

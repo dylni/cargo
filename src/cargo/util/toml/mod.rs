@@ -875,7 +875,7 @@ impl TomlManifest {
         }
         if let Some(license_file) = &package.license_file {
             let license_path = Path::new(&license_file);
-            let abs_license_path = paths::normalize_path(&package_root.join(license_path));
+            let abs_license_path = paths::normalize_path_legacy(&package_root.join(license_path));
             if abs_license_path.strip_prefix(package_root).is_err() {
                 // This path points outside of the package root. `cargo package`
                 // will copy it into the root, so adjust the path to this location.
@@ -1709,7 +1709,9 @@ impl DetailedTomlDependency {
                 // always end up hashing to the same value no matter where it's
                 // built from.
                 if cx.source_id.is_path() {
-                    let path = util::normalize_joined(cx.root, Path::new(path))?;
+                    let path = util::normalize_joined(cx.root, Path::new(path)).chain_err(|| {
+                        format!("dependency ({}) path does not exist", name_in_toml)
+                    })?;
                     SourceId::for_path(&path)?
                 } else {
                     cx.source_id
