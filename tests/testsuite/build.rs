@@ -4067,9 +4067,8 @@ fn rustc_wrapper_from_path() {
 #[cfg(not(windows))]
 fn rustc_workspace_wrapper() {
     let p = project().file("src/lib.rs", "").build();
-    p.cargo("build -v -Zunstable-options")
+    p.cargo("build -v")
         .env("RUSTC_WORKSPACE_WRAPPER", "/usr/bin/env")
-        .masquerade_as_nightly_cargo()
         .with_stderr_contains("[RUNNING] `/usr/bin/env rustc --crate-name foo [..]")
         .run();
 }
@@ -4078,9 +4077,8 @@ fn rustc_workspace_wrapper() {
 #[cfg(not(windows))]
 fn rustc_workspace_wrapper_relative() {
     let p = project().file("src/lib.rs", "").build();
-    p.cargo("build -v -Zunstable-options")
+    p.cargo("build -v")
         .env("RUSTC_WORKSPACE_WRAPPER", "./sccache")
-        .masquerade_as_nightly_cargo()
         .with_status(101)
         .with_stderr_contains("[..]/foo/./sccache rustc[..]")
         .run();
@@ -4090,9 +4088,8 @@ fn rustc_workspace_wrapper_relative() {
 #[cfg(not(windows))]
 fn rustc_workspace_wrapper_from_path() {
     let p = project().file("src/lib.rs", "").build();
-    p.cargo("build -v -Zunstable-options")
+    p.cargo("build -v")
         .env("RUSTC_WORKSPACE_WRAPPER", "wannabe_sccache")
-        .masquerade_as_nightly_cargo()
         .with_status(101)
         .with_stderr_contains("[..]`wannabe_sccache rustc [..]")
         .run();
@@ -4377,8 +4374,6 @@ fn target_edition() {
         .build();
 
     p.cargo("build -v")
-        // Passes on nightly, fails on stable, since `--edition` is nightly-only.
-        .without_status()
         .with_stderr_contains(
             "\
 [COMPILING] foo v0.0.1 ([..])

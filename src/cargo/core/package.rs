@@ -434,6 +434,10 @@ impl<'cfg> PackageSet<'cfg> {
         self.packages.keys().cloned()
     }
 
+    pub fn packages<'a>(&'a self) -> impl Iterator<Item = &'a Package> + 'a {
+        self.packages.values().filter_map(|p| p.borrow())
+    }
+
     pub fn enable_download<'a>(&'a self) -> CargoResult<Downloads<'a, 'cfg>> {
         assert!(!self.downloading.replace(true));
         let timeout = ops::HttpTimeout::new(self.config)?;
@@ -603,9 +607,8 @@ impl<'a, 'cfg> Downloads<'a, 'cfg> {
     /// eventually be returned from `wait_for_download`. Returns `Some(pkg)` if
     /// the package is ready and doesn't need to be downloaded.
     pub fn start(&mut self, id: PackageId) -> CargoResult<Option<&'a Package>> {
-        Ok(self
-            .start_inner(id)
-            .chain_err(|| format!("failed to download `{}`", id))?)
+        self.start_inner(id)
+            .chain_err(|| format!("failed to download `{}`", id))
     }
 
     fn start_inner(&mut self, id: PackageId) -> CargoResult<Option<&'a Package>> {

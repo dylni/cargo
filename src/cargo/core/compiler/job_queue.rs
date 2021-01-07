@@ -370,7 +370,11 @@ impl<'cfg> JobQueue<'cfg> {
             }
         }
 
-        self.queue.queue(unit.clone(), job, queue_deps);
+        // For now we use a fixed placeholder value for the cost of each unit, but
+        // in the future this could be used to allow users to provide hints about
+        // relative expected costs of units, or this could be automatically set in
+        // a smarter way using timing data from a previous compilation.
+        self.queue.queue(unit.clone(), job, queue_deps, 100);
         *self.counts.entry(unit.pkg.package_id()).or_insert(0) += 1;
         Ok(())
     }
@@ -776,14 +780,12 @@ impl<'cfg> DrainState<'cfg> {
         if err_state.is_some() {
             // Already encountered one error.
             log::warn!("{:?}", new_err);
+        } else if !self.active.is_empty() {
+            crate::display_error(&new_err, shell);
+            drop(shell.warn("build failed, waiting for other jobs to finish..."));
+            *err_state = Some(anyhow::format_err!("build failed"));
         } else {
-            if !self.active.is_empty() {
-                crate::display_error(&new_err, shell);
-                drop(shell.warn("build failed, waiting for other jobs to finish..."));
-                *err_state = Some(anyhow::format_err!("build failed"));
-            } else {
-                *err_state = Some(new_err);
-            }
+            *err_state = Some(new_err);
         }
     }
 
@@ -913,7 +915,7 @@ impl<'cfg> DrainState<'cfg> {
                 // thread to run the job.
                 doit(JobState {
                     id,
-                    messages: messages.clone(),
+                    messages,
                     output: Some(cx.bcx.config),
                     rmeta_required: Cell::new(rmeta_required),
                     _marker: marker::PhantomData,

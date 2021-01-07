@@ -108,7 +108,7 @@ impl Summary {
         if !weak_dep_features {
             for (feat_name, features) in self.features() {
                 for fv in features {
-                    if matches!(fv, FeatureValue::DepFeature{weak: true, ..}) {
+                    if matches!(fv, FeatureValue::DepFeature { weak: true, .. }) {
                         bail!(
                             "optional dependency features with `?` syntax are only \
                              allowed on the nightly channel and requires the \
@@ -416,7 +416,14 @@ impl FeatureValue {
 
     /// Returns `true` if this feature explicitly used `dep:` syntax.
     pub fn has_dep_prefix(&self) -> bool {
-        matches!(self, FeatureValue::Dep{..} | FeatureValue::DepFeature{dep_prefix:true, ..})
+        matches!(
+            self,
+            FeatureValue::Dep { .. }
+                | FeatureValue::DepFeature {
+                    dep_prefix: true,
+                    ..
+                }
+        )
     }
 }
 
@@ -460,11 +467,11 @@ fn validate_feature_name(config: &Config, pkg_id: PackageId, name: &str) -> Carg
         }
     }
     for ch in chars {
-        if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-' || ch == '+') {
+        if !(unicode_xid::UnicodeXID::is_xid_continue(ch) || ch == '-' || ch == '+' || ch == '.') {
             config.shell().warn(&format!(
                 "invalid character `{}` in feature `{}` in package {}, \
-                characters must be Unicode XID characters or `+` \
-                (numbers, `+`, `-`, `_`, or most letters)\n\
+                characters must be Unicode XID characters, `+`, or `.` \
+                (numbers, `+`, `-`, `_`, `.`, or most letters)\n\
                 {}",
                 ch, name, pkg_id, FUTURE
             ))?;

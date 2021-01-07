@@ -62,6 +62,12 @@ pub fn build_unit_dependencies<'a, 'cfg>(
     profiles: &'a Profiles,
     interner: &'a UnitInterner,
 ) -> CargoResult<UnitGraph> {
+    if roots.is_empty() {
+        // If -Zbuild-std, don't attach units if there is nothing to build.
+        // Otherwise, other parts of the code may be confused by seeing units
+        // in the dep graph without a root.
+        return Ok(HashMap::new());
+    }
     let (std_resolve, std_features) = match std_resolve {
         Some((r, f)) => (Some(r), Some(f)),
         None => (None, None),
@@ -512,12 +518,12 @@ fn dep_build_script(
             // build.rs unit use the same features. This is because some
             // people use `cfg!` and `#[cfg]` expressions to check for enabled
             // features instead of just checking `CARGO_FEATURE_*` at runtime.
-            // In the case with `-Zfeatures=host_dep`, and a shared
-            // dependency has different features enabled for normal vs. build,
-            // then the build.rs script will get compiled twice. I believe it
-            // is not feasible to only build it once because it would break a
-            // large number of scripts (they would think they have the wrong
-            // set of features enabled).
+            // In the case with the new feature resolver (decoupled host
+            // deps), and a shared dependency has different features enabled
+            // for normal vs. build, then the build.rs script will get
+            // compiled twice. I believe it is not feasible to only build it
+            // once because it would break a large number of scripts (they
+            // would think they have the wrong set of features enabled).
             let script_unit_for = UnitFor::new_host(unit_for.is_for_host_features());
             new_unit_dep_with_profile(
                 state,
@@ -624,8 +630,17 @@ fn connect_run_custom_build_deps(unit_dependencies: &mut UnitGraph) {
         // example a library might depend on a build script, so this map will
         // have the build script as the key and the library would be in the
         // value's set.
+        //
+        // Note that as an important part here we're skipping "test" units. Test
+        // units depend on the execution of a build script, but
+        // links-dependencies only propagate through `[dependencies]`, nothing
+        // else. We don't want to pull in a links-dependency through a
+        // dev-dependency since that could create a cycle.
         let mut reverse_deps_map = HashMap::new();
         for (unit, deps) in unit_dependencies.iter() {
+            if unit.mode.is_any_test() {
+                continue;
+            }
             for dep in deps {
                 if dep.unit.mode == CompileMode::RunCustomBuild {
                     reverse_deps_map
@@ -649,7 +664,8 @@ fn connect_run_custom_build_deps(unit_dependencies: &mut UnitGraph) {
             .keys()
             .filter(|k| k.mode == CompileMode::RunCustomBuild)
         {
-            // This is the lib that runs this custom build.
+            // This list of dependencies all depend on `unit`, an execution of
+            // the build script.
             let reverse_deps = match reverse_deps_map.get(unit) {
                 Some(set) => set,
                 None => continue,
@@ -657,7 +673,7 @@ fn connect_run_custom_build_deps(unit_dependencies: &mut UnitGraph) {
 
             let to_add = reverse_deps
                 .iter()
-                // Get all deps for lib.
+                // Get all sibling dependencies of `unit`
                 .flat_map(|reverse_dep| unit_dependencies[reverse_dep].iter())
                 // Only deps with `links`.
                 .filter(|other| {

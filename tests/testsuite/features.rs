@@ -1646,76 +1646,6 @@ fn cli_parse_ok() {
 }
 
 #[cargo_test]
-fn virtual_ws_flags() {
-    // Reject features flags in the root of a virtual workspace.
-    let p = project()
-        .file(
-            "Cargo.toml",
-            r#"
-                [workspace]
-                members = ["a"]
-            "#,
-        )
-        .file(
-            "a/Cargo.toml",
-            r#"
-                [package]
-                name = "a"
-                version = "0.1.0"
-
-                [features]
-                f1 = []
-            "#,
-        )
-        .file("a/src/lib.rs", "")
-        .build();
-
-    p.cargo("build --features=f1")
-        .with_stderr(
-            "[ERROR] --features is not allowed in the root of a virtual workspace\n\
-             [NOTE] while this was previously accepted, it didn't actually do anything\n\
-             [HELP] change the current directory to the package directory, or use the --manifest-path flag to the path of the package",
-        )
-        .with_status(101)
-        .run();
-
-    p.cargo("build --no-default-features")
-        .with_stderr(
-            "[ERROR] --no-default-features is not allowed in the root of a virtual workspace\n\
-             [NOTE] while this was previously accepted, it didn't actually do anything\n\
-             [HELP] change the current directory to the package directory, or use the --manifest-path flag to the path of the package",
-        )
-        .with_status(101)
-        .run();
-
-    // It's OK if cwd is in a member.
-    p.cargo("check --features=f1 -v")
-        .cwd("a")
-        .with_stderr(
-            "\
-[CHECKING] a [..]
-[RUNNING] `rustc --crate-name a a/src/lib.rs [..]--cfg [..]feature[..]f1[..]
-[FINISHED] dev [..]
-",
-        )
-        .run();
-
-    p.cargo("clean").run();
-
-    // And -Zpackage-features is OK because it is designed to support this.
-    p.cargo("check --features=f1 -p a -Z package-features -v")
-        .masquerade_as_nightly_cargo()
-        .with_stderr(
-            "\
-[CHECKING] a [..]
-[RUNNING] `rustc --crate-name a a/src/lib.rs [..]--cfg [..]feature[..]f1[..]
-[FINISHED] dev [..]
-",
-        )
-        .run();
-}
-
-#[cargo_test]
 fn all_features_virtual_ws() {
     // What happens with `--all-features` in the root of a virtual workspace.
     // Some of this behavior is a little strange (member dependencies also
@@ -1995,6 +1925,7 @@ fn invalid_feature_names() {
                 "_foo" = []
                 "feat-name" = []
                 "feat_name" = []
+                "foo.bar" = []
 
                 # Invalid names.
                 "+foo" = []
@@ -2002,7 +1933,6 @@ fn invalid_feature_names() {
                 ".foo" = []
                 "foo/bar" = []
                 "foo:bar" = []
-                "foo.bar" = []
                 "foo?" = []
                 "?foo" = []
                 "ⒶⒷⒸ" = []
@@ -2030,28 +1960,25 @@ For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues
 [WARNING] invalid character `?` in feature `?foo` in package foo v0.1.0 ([ROOT]/foo), the first character must be a Unicode XID start character or digit (most letters or `_` or `0` to `9`)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `¼` in feature `a¼` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `¼` in feature `a¼` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `.` in feature `foo.bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `/` in feature `foo/bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `/` in feature `foo/bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `:` in feature `foo:bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `:` in feature `foo:bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
-This was previously accepted but is being phased out; it will become a hard error in a future release.
-For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `?` in feature `foo?` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `?` in feature `foo?` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
 [WARNING] invalid character `Ⓐ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), the first character must be a Unicode XID start character or digit (most letters or `_` or `0` to `9`)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `Ⓑ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `Ⓑ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `Ⓒ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `Ⓒ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
 [WARNING] invalid character `+` in feature `+foo` in package foo v0.1.0 ([ROOT]/foo), the first character must be a Unicode XID start character or digit (most letters or `_` or `0` to `9`)
@@ -2066,28 +1993,25 @@ For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues
 [WARNING] invalid character `?` in feature `?foo` in package foo v0.1.0 ([ROOT]/foo), the first character must be a Unicode XID start character or digit (most letters or `_` or `0` to `9`)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `¼` in feature `a¼` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `¼` in feature `a¼` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `.` in feature `foo.bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `/` in feature `foo/bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `/` in feature `foo/bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `:` in feature `foo:bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `:` in feature `foo:bar` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
-This was previously accepted but is being phased out; it will become a hard error in a future release.
-For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `?` in feature `foo?` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `?` in feature `foo?` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
 [WARNING] invalid character `Ⓐ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), the first character must be a Unicode XID start character or digit (most letters or `_` or `0` to `9`)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `Ⓑ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `Ⓑ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
-[WARNING] invalid character `Ⓒ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters or `+` (numbers, `+`, `-`, `_`, or most letters)
+[WARNING] invalid character `Ⓒ` in feature `ⒶⒷⒸ` in package foo v0.1.0 ([ROOT]/foo), characters must be Unicode XID characters, `+`, or `.` (numbers, `+`, `-`, `_`, `.`, or most letters)
 This was previously accepted but is being phased out; it will become a hard error in a future release.
 For more information, see issue #8813 <https://github.com/rust-lang/cargo/issues/8813>, and please leave a comment if this will be a problem for your project.
 [CHECKING] foo v0.1.0 [..]

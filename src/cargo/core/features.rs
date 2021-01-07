@@ -66,6 +66,8 @@ pub enum Edition {
     Edition2015,
     /// The 2018 edition
     Edition2018,
+    /// The 2021 edition
+    Edition2021,
 }
 
 impl fmt::Display for Edition {
@@ -73,6 +75,7 @@ impl fmt::Display for Edition {
         match *self {
             Edition::Edition2015 => f.write_str("2015"),
             Edition::Edition2018 => f.write_str("2018"),
+            Edition::Edition2021 => f.write_str("2021"),
         }
     }
 }
@@ -82,14 +85,15 @@ impl FromStr for Edition {
         match s {
             "2015" => Ok(Edition::Edition2015),
             "2018" => Ok(Edition::Edition2018),
-            s if s.parse().map_or(false, |y: u16| y > 2020 && y < 2050) => bail!(
+            "2021" => Ok(Edition::Edition2021),
+            s if s.parse().map_or(false, |y: u16| y > 2021 && y < 2050) => bail!(
                 "this version of Cargo is older than the `{}` edition, \
-                 and only supports `2015` and `2018` editions.",
+                 and only supports `2015`, `2018`, and `2021` editions.",
                 s
             ),
             s => bail!(
-                "supported edition values are `2015` or `2018`, but `{}` \
-                 is unknown",
+                "supported edition values are `2015`, `2018`, or `2021`, \
+                 but `{}` is unknown",
                 s
             ),
         }
@@ -210,7 +214,7 @@ features! {
         [unstable] named_profiles: bool,
 
         // Opt-in new-resolver behavior.
-        [unstable] resolver: bool,
+        [stable] resolver: bool,
 
         // Allow to specify whether binaries should be stripped.
         [unstable] strip: bool,
@@ -338,7 +342,6 @@ pub struct CliUnstable {
     pub no_index_update: bool,
     pub avoid_dev_deps: bool,
     pub minimal_versions: bool,
-    pub package_features: bool,
     pub advanced_env: bool,
     pub config_include: bool,
     pub dual_proc_macros: bool,
@@ -360,6 +363,7 @@ pub struct CliUnstable {
     pub namespaced_features: bool,
     pub weak_dep_features: bool,
     pub extra_link_arg: bool,
+    pub credential_process: bool,
 }
 
 fn deserialize_build_std<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
@@ -444,7 +448,6 @@ impl CliUnstable {
             "no-index-update" => self.no_index_update = parse_empty(k, v)?,
             "avoid-dev-deps" => self.avoid_dev_deps = parse_empty(k, v)?,
             "minimal-versions" => self.minimal_versions = parse_empty(k, v)?,
-            "package-features" => self.package_features = parse_empty(k, v)?,
             "advanced-env" => self.advanced_env = parse_empty(k, v)?,
             "config-include" => self.config_include = parse_empty(k, v)?,
             "dual-proc-macros" => self.dual_proc_macros = parse_empty(k, v)?,
@@ -468,6 +471,7 @@ impl CliUnstable {
             "namespaced-features" => self.namespaced_features = parse_empty(k, v)?,
             "weak-dep-features" => self.weak_dep_features = parse_empty(k, v)?,
             "extra-link-arg" => self.extra_link_arg = parse_empty(k, v)?,
+            "credential-process" => self.credential_process = parse_empty(k, v)?,
             _ => bail!("unknown `-Z` flag specified: {}", k),
         }
 
