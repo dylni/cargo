@@ -12,9 +12,9 @@ config file (`.cargo/config.toml`) in the `unstable` table. For example:
 
 ```toml
 [unstable]
-mtime-on-use = 'yes'
-multitarget = 'yes'
-timings = 'yes'
+mtime-on-use = true
+multitarget = true
+timings = ["html"]
 ```
 
 Some unstable features will require you to specify the `cargo-features` key in
@@ -199,7 +199,7 @@ For example, using `cargo build` with `--profile` and the manifest from above:
 cargo +nightly build --profile release-lto -Z unstable-options
 ```
 
-When a custom profile is used, build artifcats go to a different target by
+When a custom profile is used, build artifacts go to a different target by
 default. In the example above, you can expect to see the outputs under
 `target/release-lto`.
 
@@ -985,7 +985,7 @@ When used with `credentials` file tokens, it needs the `-Z unstable-options`
 command-line option:
 
 ```console
-cargo logout -Z unstable-options`
+cargo logout -Z unstable-options
 ```
 
 When used with the `credential-process` config, use the `-Z
@@ -993,7 +993,7 @@ credential-process` command-line option:
 
 
 ```console
-cargo logout -Z credential-process`
+cargo logout -Z credential-process
 ```
 
 [`cargo login`]: ../commands/cargo-login.md
