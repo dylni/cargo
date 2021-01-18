@@ -89,8 +89,6 @@ pub fn normalize_path_legacy(path: &Path) -> PathBuf {
 pub fn normalize_path(path: &Path) -> CargoResult<PathBuf> {
     return path
         .normalize()
-        // Require the path to exist, which would already be required on Unix.
-        .and_then(|p| p.metadata().map(|_| p))
         .chain_err(|| format!("failed to normalize `{}`", path.display()))
         .map(BasePathBuf::into_path_buf);
 }
